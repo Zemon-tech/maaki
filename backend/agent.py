@@ -192,7 +192,7 @@ async def create_and_run_agent(
     logger.info(f"Initializing Dr. Maaki pipeline components for new WebRTC peer (voice: {active_voice})...")
 
     # Start or attach active consultation session
-    consultation_manager._start_new_session_if_needed()
+    consultation_manager.ensure_active_consultation()
 
     # 1. WebRTC Audio Transport
     transport_params = TransportParams(
@@ -290,12 +290,14 @@ async def create_and_run_agent(
         if message and message.content:
             logger.info(f"Patient turn: '{message.content}'")
             metrics_store.add_transcript("user", message.content)
+            consultation_manager.record_turn("user", message.content)
 
     @assistant_aggregator.event_handler("on_assistant_turn_stopped")
     async def on_assistant_turn_stopped(aggregator, message):
         if message and message.content:
             logger.info(f"Doctor turn: '{message.content}'")
             metrics_store.add_transcript("assistant", message.content)
+            consultation_manager.record_turn("assistant", message.content)
 
     # 7. Assembled Pipeline:
     # transport.input -> STT -> UserAggregator -> LLM -> TTS -> transport.output -> AssistantAggregator -> LatencyTracker

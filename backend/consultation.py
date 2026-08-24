@@ -1,11 +1,10 @@
 """Consultation context engine and persistent medical memory manager for Dr. Maaki."""
 
-import asyncio
 from datetime import datetime
 import json
-import os
 from pathlib import Path
 from typing import Any
+import uuid
 from loguru import logger
 from pydantic import BaseModel, Field
 
@@ -13,6 +12,12 @@ from pydantic import BaseModel, Field
 DATA_DIR = Path(__file__).parent / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 CONSULTATIONS_FILE = DATA_DIR / "consultations.json"
+
+
+def _generate_session_id() -> str:
+    """Unique meet ID: second-resolution timestamp collides when sessions start
+    back-to-back, which would make finalize overwrite the earlier record."""
+    return f"meet-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
 
 
 class ClinicalState(BaseModel):
@@ -59,7 +64,7 @@ class ConsultationManager:
         self.active_consultation: ConsultationRecord | None = None
         self._consultations: list[ConsultationRecord] = []
         self._load_history()
-        self._start_new_session_if_needed()
+        self.ensure_active_consultation()
 
     def _load_history(self):
         """Load past consultation records from disk."""
@@ -83,11 +88,11 @@ class ConsultationManager:
         except Exception as e:
             logger.error(f"Error saving consultations history: {e}")
 
-    def _start_new_session_if_needed(self):
+    def ensure_active_consultation(self):
+        """Start a new consultation record if none is active (e.g. on first connect)."""
         if not self.active_consultation:
-            session_id = f"meet-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
             self.active_consultation = ConsultationRecord(
-                id=session_id,
+                id=_generate_session_id(),
                 started_at=datetime.now().isoformat(),
             )
 
@@ -96,9 +101,8 @@ class ConsultationManager:
         if self.active_consultation and self.active_consultation.messages:
             self.finalize_active_consultation()
 
-        session_id = f"meet-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
         self.active_consultation = ConsultationRecord(
-            id=session_id,
+            id=_generate_session_id(),
             patient_name=patient_name,
             started_at=datetime.now().isoformat(),
         )
@@ -141,7 +145,7 @@ class ConsultationManager:
     def record_turn(self, role: str, text: str):
         """Record a transcript message in active consultation and update clinical state."""
         if not self.active_consultation:
-            self._start_new_session_if_needed()
+            self.ensure_active_consultation()
 
         assert self.active_consultation is not None
         self.active_consultation.messages.append({"role": role, "text": text})
@@ -205,9 +209,11 @@ class ConsultationManager:
                     state.recommendations.append(text)
 
     def finalize_active_consultation(self) -> ConsultationRecord | None:
-        """Finalize active consultation, generate SOAP note summary, and save to disk."""
+        """Finalize active consultation, generate SOAP note summary, save to disk,
+        and clear the active record so the next session starts fresh."""
         if not self.active_consultation or not self.active_consultation.messages:
-            return self.active_consultation
+            self.active_consultation = None
+            return None
 
         self.active_consultation.ended_at = datetime.now().isoformat()
         state = self.active_consultation.clinical_state
@@ -246,7 +252,9 @@ class ConsultationManager:
 
         self._save_history()
         logger.info(f"Finalized consultation {self.active_consultation.id} with SOAP note.")
-        return self.active_consultation
+        finalized = self.active_consultation
+        self.active_consultation = None
+        return finalized
 
 
 consultation_manager = ConsultationManager()

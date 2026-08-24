@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from collections.abc import Callable
 from loguru import logger
 
+from consultation import consultation_manager
 from pipecat.frames.frames import (
     CancelFrame,
     Frame,
@@ -71,9 +72,6 @@ class TurnMetrics:
             self.tts_first_audio_ms = round((self.t6_tts_first_audio - self.t5_tts_first_chunk) * 1000, 1)
 
 
-from consultation import consultation_manager
-
-
 class GlobalMetricsStore:
     """Singleton store to broadcast latest metrics, persona state, clinical context, and transcripts to UI / API."""
 
@@ -101,12 +99,6 @@ class GlobalMetricsStore:
             self.conversation[-1]["text"] = text
         else:
             self.conversation.append({"role": role, "text": text})
-
-        # Record to active consultation manager to build progressive clinical context
-        try:
-            consultation_manager.record_turn(role, text)
-        except Exception as e:
-            logger.debug(f"Consultation manager record error: {e}")
 
     def set_status(self, status: str, state: str | None = None):
         self.status = status

@@ -19,6 +19,7 @@ from pipecat.transports.smallwebrtc.request_handler import (
 
 from agent import create_and_run_agent
 from config import AppConfig, check_llm_reachability, check_local_llm_reachability, get_config, print_startup_banner
+from consultation import consultation_manager
 from latency import metrics_store
 from ui import HEAD_CONTENT, create_ui
 
@@ -51,11 +52,12 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Ultra-Low-Latency Local LLM Voice Assistant", lifespan=lifespan)
 
-# Allow CORS for local testing
+# Allow CORS for local testing.
+# Note: allow_credentials cannot be combined with wildcard origins per the CORS
+# spec — browsers reject credentialed requests when the server allows "*".
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -99,9 +101,6 @@ async def handle_webrtc_patch(request: Request):
     except Exception as e:
         logger.error(f"Error handling WebRTC patch: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-
-from consultation import consultation_manager
 
 
 @app.get("/api/status")

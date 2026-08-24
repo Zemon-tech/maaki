@@ -18,48 +18,8 @@ VALID_LLM_PROVIDERS = {LLM_PROVIDER_LOCAL, LLM_PROVIDER_OPENROUTER}
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
-
-@dataclass
-class AppConfig:
-    # -----------------------------------------------------------------------
-    # LLM Provider Selection: "local" (default) or "openrouter"
-    # -----------------------------------------------------------------------
-    llm_provider: str = os.getenv("LLM_PROVIDER", LLM_PROVIDER_LOCAL).strip().lower()
-
-    # -----------------------------------------------------------------------
-    # Sarvam AI Settings
-    # -----------------------------------------------------------------------
-    sarvam_api_key: str = os.getenv("SARVAM_API_KEY", "").strip()
-    sarvam_stt_model: str = os.getenv("SARVAM_STT_MODEL", "saaras:v3").strip()
-    sarvam_tts_model: str = os.getenv("SARVAM_TTS_MODEL", "bulbul:v3").strip()
-    sarvam_language: str = os.getenv("SARVAM_LANGUAGE", "en-IN").strip()
-    sarvam_tts_voice: str = os.getenv("SARVAM_TTS_VOICE", "ratan").strip()
-    # Pace: 0.5–2.0 for bulbul:v3. 0.9 = relaxed/measured (ideal for doctor consultation)
-    sarvam_tts_pace: float = float(os.getenv("SARVAM_TTS_PACE", "0.9"))
-    # Temperature: 0.01–1.0 for bulbul:v3. 0.7 = warm, expressive, conversational
-    sarvam_tts_temperature: float = float(os.getenv("SARVAM_TTS_TEMPERATURE", "0.7"))
-
-    # -----------------------------------------------------------------------
-    # Local OpenAI-Compatible LLM Settings (Ollama, vLLM, llama.cpp, etc.)
-    # -----------------------------------------------------------------------
-    local_llm_base_url: str = os.getenv("LOCAL_LLM_BASE_URL", "http://localhost:8000/v1").strip().rstrip("/")
-    local_llm_api_key: str = os.getenv("LOCAL_LLM_API_KEY", "local").strip()
-    local_llm_model: str = os.getenv("LOCAL_LLM_MODEL", "qwen2.5:7b").strip()
-
-    # -----------------------------------------------------------------------
-    # OpenRouter Settings (https://openrouter.ai)
-    # -----------------------------------------------------------------------
-    openrouter_api_key: str = os.getenv("OPENROUTER_API_KEY", "").strip()
-    openrouter_model: str = os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini").strip()
-    # Override base URL only if you need a proxy; leave blank to use the default
-    openrouter_base_url: str = os.getenv("OPENROUTER_BASE_URL", OPENROUTER_BASE_URL).strip().rstrip("/")
-
-    # -----------------------------------------------------------------------
-    # Prompt & Behavior
-    # -----------------------------------------------------------------------
-    system_prompt: str = os.getenv(
-        "SYSTEM_PROMPT",
-        """You are Nikul Mistry, Chief Business Officer at SAVA Info Systems Pvt. Ltd., taking a live vendor pitch call. You speak in natural, sharp Hinglish like a Bangalore startup founder / tech executive — mixing English with casual Hindi tech lingo (words like 'yaar', 'matlab', 'bro', 'boss', 'scene kya hai', 'sorted hai', 'dekh', 'bandwidth', 'ROI', 'stack', 'basically'). Founded in 2016, SAVA is an 11-50 person, ISO9001-certified software agency with 100+ projects delivered for 50+ global clients (US, UK, Germany, Australia) across Angular, Node.js, Java, Fastify, MongoDB and MySQL. SAVA also builds its own products like API Maker (low-code backend) and SAVA Printing SaaS, positioning itself as 'Development with AI. Faster Growth With AI Automation'. As CBO, you own revenue growth, pipeline, client delivery, and unit economics. You picked up expecting a routine vendor call; open with a quick, natural Hinglish greeting (e.g. 'Hey, Nikul here, batao what's up?') and let the caller lead into their pitch. Conduct yourself as a busy, sharp, moderately skeptical but fair founder/CBO who takes calls like this constantly and has seen plenty of vendors overpromise. Follow these principles strictly:
+# Default persona (override with SYSTEM_PROMPT in .env).
+DEFAULT_SYSTEM_PROMPT = """You are Nikul Mistry, Chief Business Officer at SAVA Info Systems Pvt. Ltd., taking a live vendor pitch call. You speak in natural, sharp Hinglish like a Bangalore startup founder / tech executive — mixing English with casual Hindi tech lingo (words like 'yaar', 'matlab', 'bro', 'boss', 'scene kya hai', 'sorted hai', 'dekh', 'bandwidth', 'ROI', 'stack', 'basically'). Founded in 2016, SAVA is an 11-50 person, ISO9001-certified software agency with 100+ projects delivered for 50+ global clients (US, UK, Germany, Australia) across Angular, Node.js, Java, Fastify, MongoDB and MySQL. SAVA also builds its own products like API Maker (low-code backend) and SAVA Printing SaaS, positioning itself as 'Development with AI. Faster Growth With AI Automation'. As CBO, you own revenue growth, pipeline, client delivery, and unit economics. You picked up expecting a routine vendor call; open with a quick, natural Hinglish greeting (e.g. 'Hey, Nikul here, batao what's up?') and let the caller lead into their pitch. Conduct yourself as a busy, sharp, moderately skeptical but fair founder/CBO who takes calls like this constantly and has seen plenty of vendors overpromise. Follow these principles strictly:
 
 1. LISTEN AND SYNTHESIZE, DON'T RESET: Absorb everything the caller has told you about their product (what it does, who it's for, problem solved) and never ask them to repeat something they already said.
 
@@ -71,14 +31,60 @@ class AppConfig:
 
 5. NEVER LOOP: Every response must build on previous context and move the call forward — toward either next steps (demo, team connect) if convinced, or a polite but direct pass if not.
 
-6. STAY IN CHARACTER: You are Nikul on a live call, not an AI describing a role. Never break character or provide meta-coaching unless explicitly asked to step out of the roleplay.""",
-    ).strip()
+6. STAY IN CHARACTER: You are Nikul on a live call, not an AI describing a role. Never break character or provide meta-coaching unless explicitly asked to step out of the roleplay."""
+
+
+@dataclass
+class AppConfig:
+    # -----------------------------------------------------------------------
+    # LLM Provider Selection: "local" (default) or "openrouter"
+    # -----------------------------------------------------------------------
+    llm_provider: str = field(default_factory=lambda: os.getenv("LLM_PROVIDER", LLM_PROVIDER_LOCAL).strip().lower())
+
+    # -----------------------------------------------------------------------
+    # Sarvam AI Settings
+    # -----------------------------------------------------------------------
+    sarvam_api_key: str = field(default_factory=lambda: os.getenv("SARVAM_API_KEY", "").strip())
+    sarvam_stt_model: str = field(default_factory=lambda: os.getenv("SARVAM_STT_MODEL", "saaras:v3").strip())
+    sarvam_tts_model: str = field(default_factory=lambda: os.getenv("SARVAM_TTS_MODEL", "bulbul:v3").strip())
+    sarvam_language: str = field(default_factory=lambda: os.getenv("SARVAM_LANGUAGE", "en-IN").strip())
+    sarvam_tts_voice: str = field(default_factory=lambda: os.getenv("SARVAM_TTS_VOICE", "ratan").strip())
+    # Pace: 0.5–2.0 for bulbul:v3. 0.9 = relaxed/measured (ideal for doctor consultation)
+    sarvam_tts_pace: float = field(default_factory=lambda: float(os.getenv("SARVAM_TTS_PACE", "0.9")))
+    # Temperature: 0.01–1.0 for bulbul:v3. 0.7 = warm, expressive, conversational
+    sarvam_tts_temperature: float = field(default_factory=lambda: float(os.getenv("SARVAM_TTS_TEMPERATURE", "0.7")))
+
+    # -----------------------------------------------------------------------
+    # Local OpenAI-Compatible LLM Settings (Ollama, vLLM, llama.cpp, etc.)
+    # -----------------------------------------------------------------------
+    local_llm_base_url: str = field(
+        default_factory=lambda: os.getenv("LOCAL_LLM_BASE_URL", "http://localhost:8000/v1").strip().rstrip("/")
+    )
+    local_llm_api_key: str = field(default_factory=lambda: os.getenv("LOCAL_LLM_API_KEY", "local").strip())
+    local_llm_model: str = field(default_factory=lambda: os.getenv("LOCAL_LLM_MODEL", "qwen2.5:7b").strip())
+
+    # -----------------------------------------------------------------------
+    # OpenRouter Settings (https://openrouter.ai)
+    # -----------------------------------------------------------------------
+    openrouter_api_key: str = field(default_factory=lambda: os.getenv("OPENROUTER_API_KEY", "").strip())
+    openrouter_model: str = field(default_factory=lambda: os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini").strip())
+    # Override base URL only if you need a proxy; leave blank to use the default
+    openrouter_base_url: str = field(
+        default_factory=lambda: os.getenv("OPENROUTER_BASE_URL", OPENROUTER_BASE_URL).strip().rstrip("/")
+    )
+
+    # -----------------------------------------------------------------------
+    # Prompt & Behavior
+    # -----------------------------------------------------------------------
+    system_prompt: str = field(
+        default_factory=lambda: os.getenv("SYSTEM_PROMPT", DEFAULT_SYSTEM_PROMPT).strip()
+    )
 
     # -----------------------------------------------------------------------
     # Web & Server Settings
     # -----------------------------------------------------------------------
-    host: str = os.getenv("HOST", "127.0.0.1").strip()
-    port: int = int(os.getenv("PORT", "7860"))
+    host: str = field(default_factory=lambda: os.getenv("HOST", "127.0.0.1").strip())
+    port: int = field(default_factory=lambda: int(os.getenv("PORT", "7860")))
 
     # -----------------------------------------------------------------------
     # Derived helpers (set post-init so dataclass fields are available)
